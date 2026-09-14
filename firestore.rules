@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Products collection: public read, authenticated or admin write
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Podcasts collection: public read, write for content management
+    match /podcasts/{podcastId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Reviews collection: public read of reviews, anyone can submit a review
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Analytics and settings: public read, write
+    match /analytics/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}

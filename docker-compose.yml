@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # 1. ToyLand Web Server & Backend Application
+  toyland:
+    build: .
+    container_name: toyland_app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      # Persistent backup directory
+      - ./data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=toyland_user
+      - MYSQL_PASSWORD=toyland_pass
+      - MYSQL_DATABASE=toyland_db
+
+  # 2. MySQL 8.0 Dedicated Database Service
+  mysql:
+    image: mysql:8.0
+    container_name: toyland_mysql
+    restart: unless-stopped
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: root_secret_password
+      MYSQL_DATABASE: toyland_db
+      MYSQL_USER: toyland_user
+      MYSQL_PASSWORD: toyland_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init-mysql.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_secret_password"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mysql_data:
+    driver: local

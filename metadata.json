@@ -1,0 +1,6 @@
+{
+  "name": "توی‌لند | شرکت تولید اسباب‌بازی",
+  "description": "وب‌سایت شرکت تولید اسباب‌بازی با فروشگاه محصولات، پادکست و قصه‌های صوتی، پنل مدیریت، نظرات والدین و آمار بازدیدها",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

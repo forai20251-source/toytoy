@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>توی‌لند | شرکت تولید اسباب‌بازی</title>
+    <meta name="description" content="وب‌سایت شرکت تولید اسباب‌بازی با فروشگاه محصولات، پادکست و قصه‌های صوتی، پنل مدیریت، نظرات والدین و آمار بازدیدها" />
+    <meta property="og:title" content="توی‌لند | شرکت تولید اسباب‌بازی" />
+    <meta property="og:description" content="وب‌سایت شرکت تولید اسباب‌بازی با فروشگاه محصولات، پادکست و قصه‌های صوتی، پنل مدیریت، نظرات والدین و آمار بازدیدها" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <script>
+      (function() {
+        try {
+          const savedTheme = localStorage.getItem('toyland_theme');
+          if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body class="bg-amber-50/40 dark:bg-slate-950 text-slate-800 dark:text-slate-100 antialiased font-['Vazirmatn',sans-serif] selection:bg-amber-400 selection:text-amber-950 transition-colors duration-200">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

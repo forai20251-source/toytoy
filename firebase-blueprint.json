@@ -1,0 +1,97 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "Toy and educational play products",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "englishName": { "type": "string" },
+        "category": { "type": "string" },
+        "ageRange": { "type": "string" },
+        "price": { "type": "number" },
+        "description": { "type": "string" },
+        "rating": { "type": "number" },
+        "reviewsCount": { "type": "number" },
+        "imageUrl": { "type": "string" },
+        "galleryImages": { "type": "array" },
+        "features": { "type": "array" },
+        "safetyNotes": { "type": "string" },
+        "educationalValue": { "type": "string" },
+        "inStock": { "type": "boolean" },
+        "dimensions": { "type": "string" },
+        "material": { "type": "string" }
+      },
+      "required": ["id", "name", "price", "category", "ageRange"]
+    },
+    "PodcastEpisode": {
+      "title": "PodcastEpisode",
+      "description": "Audio bedtime stories and children podcasts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "narrator": { "type": "string" },
+        "duration": { "type": "string" },
+        "ageGroup": { "type": "string" },
+        "coverUrl": { "type": "string" },
+        "audioUrl": { "type": "string" },
+        "description": { "type": "string" },
+        "relatedProductId": { "type": "string" },
+        "playsCount": { "type": "number" },
+        "likesCount": { "type": "number" },
+        "theme": { "type": "string" }
+      },
+      "required": ["id", "title", "audioUrl"]
+    },
+    "ParentReview": {
+      "title": "ParentReview",
+      "description": "Reviews from parents and caregivers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "productId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "childAge": { "type": "string" },
+        "rating": { "type": "number" },
+        "date": { "type": "string" },
+        "comment": { "type": "string" },
+        "helpfulCount": { "type": "number" },
+        "verifiedPurchase": { "type": "boolean" },
+        "approved": { "type": "boolean" }
+      },
+      "required": ["id", "productId", "authorName", "rating", "comment"]
+    },
+    "UsageAnalytics": {
+      "title": "UsageAnalytics",
+      "description": "Usage analytics counters",
+      "type": "object",
+      "properties": {
+        "totalVisitors": { "type": "number" },
+        "totalProductViews": { "type": "number" },
+        "totalPodcastListens": { "type": "number" },
+        "totalReviews": { "type": "number" }
+      },
+      "required": ["totalVisitors"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "#/entities/Product",
+      "description": "Toy collection catalog"
+    },
+    "/podcasts/{podcastId}": {
+      "schema": "#/entities/PodcastEpisode",
+      "description": "Audio stories and podcast episodes"
+    },
+    "/reviews/{reviewId}": {
+      "schema": "#/entities/ParentReview",
+      "description": "Parent user reviews and feedback"
+    },
+    "/analytics/{docId}": {
+      "schema": "#/entities/UsageAnalytics",
+      "description": "Aggregated application usage counters"
+    }
+  }
+}
