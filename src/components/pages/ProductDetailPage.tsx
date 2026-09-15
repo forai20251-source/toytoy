@@ -14,7 +14,9 @@ import {
   UserCheck,
   Check,
   Instagram,
-  X
+  X,
+  PhoneCall,
+  MessageCircle
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Product, ParentReview } from '../../types';
@@ -104,7 +106,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             id="top-share-telegram-btn"
             onClick={() => {
               const url = window.location.href;
-              const text = `🧸 اسباب‌بازی ${product.title}\n${product.shortDesc}\nقیمت: ${formatToman(product.price)}\nتوی‌لند:`;
+              const priceText = product.isCustomPrice && product.customPriceText ? product.customPriceText : formatToman(product.price);
+              const text = `🧸 اسباب‌بازی ${product.title}\n${product.shortDesc}\nقیمت: ${priceText}\nتوی‌لند:`;
               window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
             }}
             className="hidden sm:flex items-center gap-1.5 text-xs font-bold text-[#229ED9] bg-sky-50 hover:bg-sky-100 border border-sky-200 px-3 py-2 rounded-xl transition-colors cursor-pointer"
@@ -248,30 +251,72 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
           {/* Pricing Box & Trust Guarantees */}
           <div className="pt-6 border-t border-slate-100 space-y-4">
-            <div className="flex items-baseline justify-between">
-              <span className="text-sm font-bold text-slate-700">قیمت فروش مستقیم کارخانه:</span>
-              <div className="text-left">
-                {product.oldPrice && (
-                  <span className="block text-xs text-slate-600 line-through">
-                    {formatToman(product.oldPrice)}
-                  </span>
-                )}
-                <span className="text-2xl sm:text-3xl font-black text-orange-600">
-                  {formatToman(product.price)}
+            {product.isCustomPrice && product.customPriceText ? (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-orange-500/10 border border-amber-400/30">
+                <div>
+                  <span className="block text-xs text-amber-900/80 font-bold mb-1">قیمت و استعلام:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="p-2 rounded-xl bg-amber-500/20 text-amber-900">
+                      <PhoneCall className="w-5 h-5 text-amber-800" />
+                    </span>
+                    <span className="text-xl sm:text-2xl font-black text-amber-950">
+                      {product.customPriceText}
+                    </span>
+                  </div>
+                </div>
+                <span className="self-start sm:self-center text-xs font-bold text-amber-900 bg-amber-200/70 border border-amber-300 px-3 py-1 rounded-xl">
+                  تولید سفارشی / استعلام مستقیم
                 </span>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-baseline justify-between">
+                <span className="text-sm font-bold text-slate-700">قیمت فروش مستقیم کارخانه:</span>
+                <div className="text-left">
+                  {product.oldPrice && (
+                    <span className="block text-xs text-slate-600 line-through">
+                      {formatToman(product.oldPrice)}
+                    </span>
+                  )}
+                  <span className="text-2xl sm:text-3xl font-black text-orange-600">
+                    {formatToman(product.price)}
+                  </span>
+                </div>
+              </div>
+            )}
 
             <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                id="inquiry-order-btn"
-                onClick={() => {
-                  alert(`درخواست سفارش محصول "${product.title}" با موفقیت ثبت گردید. همکاران فروش کارخانه توی‌لند به زودی با شما تماس خواهند گرفت.`);
-                }}
-                className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-extrabold text-base shadow-lg shadow-orange-300/40 hover:scale-102 transition-all text-center cursor-pointer"
-              >
-                ثبت سفارش مستقیم از کارخانه
-              </button>
+              {product.isCustomPrice && product.customPriceText ? (
+                <>
+                  <a
+                    href="tel:02188889999"
+                    id="inquiry-call-btn"
+                    className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-amber-600 to-orange-500 hover:from-amber-700 hover:to-orange-600 text-white font-extrabold text-base shadow-lg shadow-amber-500/30 hover:scale-102 transition-all flex items-center justify-center gap-2.5 cursor-pointer text-center"
+                  >
+                    <PhoneCall className="w-5 h-5 shrink-0" />
+                    <span>تماس فوری برای استعلام قیمت</span>
+                  </a>
+                  <a
+                    href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`سلام، برای استعلام قیمت اسباب‌بازی «${product.title}» از کارخانه توی‌لند پیام می‌دهم.\n${typeof window !== 'undefined' ? window.location.href : ''}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    id="inquiry-whatsapp-btn"
+                    className="py-4 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm sm:text-base shadow-md shadow-emerald-600/20 hover:scale-102 transition-all flex items-center justify-center gap-2 cursor-pointer text-center"
+                  >
+                    <MessageCircle className="w-5 h-5 shrink-0" />
+                    <span>پیام در واتساپ</span>
+                  </a>
+                </>
+              ) : (
+                <button
+                  id="inquiry-order-btn"
+                  onClick={() => {
+                    alert(`درخواست سفارش محصول "${product.title}" با موفقیت ثبت گردید. همکاران فروش کارخانه توی‌لند به زودی با شما تماس خواهند گرفت.`);
+                  }}
+                  className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-extrabold text-base shadow-lg shadow-orange-300/40 hover:scale-102 transition-all text-center cursor-pointer"
+                >
+                  ثبت سفارش مستقیم از کارخانه
+                </button>
+              )}
             </div>
 
             {/* Trust perks */}
@@ -580,7 +625,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-600">
                   <span>{product.ageRange}</span>
                   <span>•</span>
-                  <span className="font-bold text-orange-600">{formatToman(product.price)}</span>
+                  <span className="font-bold text-orange-600">
+                    {product.isCustomPrice && product.customPriceText ? product.customPriceText : formatToman(product.price)}
+                  </span>
                 </div>
               </div>
             </div>

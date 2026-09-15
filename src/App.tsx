@@ -5,7 +5,8 @@ import {
   PodcastEpisode, 
   ParentReview, 
   UsageAnalytics, 
-  AgeGroup 
+  AgeGroup,
+  AdminUser
 } from './types';
 import { 
   INITIAL_PRODUCTS, 
@@ -26,6 +27,7 @@ import {
   deleteReviewFromDb,
   updateAnalyticsInDb
 } from './lib/dbService';
+import { getStoredAdminUser, logoutAdmin } from './lib/authService';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { AudioPlayerBar } from './components/AudioPlayerBar';
@@ -36,6 +38,7 @@ import { PodcastsPage } from './components/pages/PodcastsPage';
 import { AboutPage } from './components/pages/AboutPage';
 import { ContactPage } from './components/pages/ContactPage';
 import { AdminPanelPage } from './components/pages/AdminPanelPage';
+import { AdminLoginPage } from './components/pages/AdminLoginPage';
 
 export default function App() {
   // Navigation State
@@ -43,6 +46,20 @@ export default function App() {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [productsAgeFilter, setProductsAgeFilter] = useState<AgeGroup>('all');
   const [isDbLoading, setIsDbLoading] = useState(true);
+
+  // Authenticated Admin User State
+  const [currentUser, setCurrentUser] = useState<AdminUser | null>(() => getStoredAdminUser());
+
+  const handleAdminLoginSuccess = (user: AdminUser) => {
+    setCurrentUser(user);
+    setCurrentPage('admin');
+  };
+
+  const handleAdminLogout = () => {
+    logoutAdmin();
+    setCurrentUser(null);
+    setCurrentPage('home');
+  };
 
   // Products State with localStorage + cloud database fallback
   const [products, setProducts] = useState<Product[]>(() => {
@@ -367,6 +384,8 @@ export default function App() {
         pendingReviewsCount={pendingReviewsCount}
         isDarkMode={isDarkMode}
         onToggleDarkMode={handleToggleDarkMode}
+        currentUser={currentUser}
+        onLogout={handleAdminLogout}
       />
 
       {/* Main Page Routing */}
@@ -420,21 +439,30 @@ export default function App() {
         )}
 
         {currentPage === 'admin' && (
-          <AdminPanelPage
-            products={products}
-            podcasts={podcasts}
-            reviews={reviews}
-            analytics={analytics}
-            onAddProduct={handleAddProduct}
-            onUpdateProduct={handleUpdateProduct}
-            onDeleteProduct={handleDeleteProduct}
-            onAddPodcast={handleAddPodcast}
-            onUpdatePodcast={handleUpdatePodcast}
-            onDeletePodcast={handleDeletePodcast}
-            onApproveReview={handleApproveReview}
-            onDeleteReview={handleDeleteReview}
-            onResetSampleData={handleResetSampleData}
-          />
+          currentUser ? (
+            <AdminPanelPage
+              products={products}
+              podcasts={podcasts}
+              reviews={reviews}
+              analytics={analytics}
+              currentUser={currentUser}
+              onLogout={handleAdminLogout}
+              onAddProduct={handleAddProduct}
+              onUpdateProduct={handleUpdateProduct}
+              onDeleteProduct={handleDeleteProduct}
+              onAddPodcast={handleAddPodcast}
+              onUpdatePodcast={handleUpdatePodcast}
+              onDeletePodcast={handleDeletePodcast}
+              onApproveReview={handleApproveReview}
+              onDeleteReview={handleDeleteReview}
+              onResetSampleData={handleResetSampleData}
+            />
+          ) : (
+            <AdminLoginPage
+              onLoginSuccess={handleAdminLoginSuccess}
+              onCancel={() => handleNavigate('home')}
+            />
+          )
         )}
       </main>
 

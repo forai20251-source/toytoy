@@ -36,7 +36,9 @@ import {
   Link as LinkIcon,
   FileText,
   BookOpen,
-  AlignRight
+  AlignRight,
+  LogOut,
+  PhoneCall
 } from 'lucide-react';
 import { 
   Product, 
@@ -44,15 +46,21 @@ import {
   ParentReview, 
   UsageAnalytics, 
   ProductCategory, 
-  AgeGroup 
+  AgeGroup,
+  AdminUser,
+  AdminPermission
 } from '../../types';
 import { formatToman, toPersianDigits } from '../../utils/formatters';
+import { UserManagementTab } from '../admin/UserManagementTab';
+import { hasPermission } from '../../lib/authService';
 
 interface AdminPanelPageProps {
   products: Product[];
   podcasts: PodcastEpisode[];
   reviews: ParentReview[];
   analytics: UsageAnalytics;
+  currentUser?: AdminUser | null;
+  onLogout?: () => void;
   onAddProduct: (product: Product) => void;
   onUpdateProduct: (product: Product) => void;
   onDeleteProduct: (id: string) => void;
@@ -69,6 +77,8 @@ export const AdminPanelPage: React.FC<AdminPanelPageProps> = ({
   podcasts,
   reviews,
   analytics,
+  currentUser,
+  onLogout,
   onAddProduct,
   onUpdateProduct,
   onDeleteProduct,
@@ -79,8 +89,28 @@ export const AdminPanelPage: React.FC<AdminPanelPageProps> = ({
   onDeleteReview,
   onResetSampleData
 }) => {
-  const [activeTab, setActiveTab] = useState<'analytics' | 'products' | 'podcasts' | 'reviews' | 'self-host'>('analytics');
   const [deployMethod, setDeployMethod] = useState<'docker' | 'pm2' | 'nginx'>('docker');
+
+  // RBAC Permission checks
+  const canViewAnalytics = !currentUser || hasPermission(currentUser, 'view_analytics');
+  const canManageProducts = !currentUser || hasPermission(currentUser, 'manage_products');
+  const canManagePodcasts = !currentUser || hasPermission(currentUser, 'manage_podcasts');
+  const canManageReviews = !currentUser || hasPermission(currentUser, 'moderate_reviews');
+  const canViewUsers = !currentUser || hasPermission(currentUser, 'manage_users');
+  const canViewSettings = !currentUser || hasPermission(currentUser, 'manage_system');
+
+  // Determine initial accessible tab
+  const getInitialTab = (): 'analytics' | 'products' | 'podcasts' | 'reviews' | 'self-host' | 'users' => {
+    if (canViewAnalytics) return 'analytics';
+    if (canManageProducts) return 'products';
+    if (canManagePodcasts) return 'podcasts';
+    if (canManageReviews) return 'reviews';
+    if (canViewUsers) return 'users';
+    if (canViewSettings) return 'self-host';
+    return 'analytics';
+  };
+
+  const [activeTab, setActiveTab] = useState<'analytics' | 'products' | 'podcasts' | 'reviews' | 'self-host' | 'users'>(getInitialTab());
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [healthLoading, setHealthLoading] = useState(false);
   const [healthResult, setHealthResult] = useState<{
@@ -208,6 +238,8 @@ export const AdminPanelPage: React.FC<AdminPanelPageProps> = ({
     ageRange: '۳ تا ۵ سال',
     ageFilter: '3-5' as '0-2' | '3-5' | '6-8' | '9+',
     price: 350000,
+    isCustomPrice: false,
+    customPriceText: 'برای استعلام قیمت تماس بگیرید',
     shortDesc: '',
     description: '',
     image: 'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=800&q=80',
@@ -263,6 +295,8 @@ export const AdminPanelPage: React.FC<AdminPanelPageProps> = ({
       ageRange: '۳ تا ۵ سال',
       ageFilter: '3-5',
       price: 380000,
+      isCustomPrice: false,
+      customPriceText: 'برای استعلام قیمت تماس بگیرید',
       shortDesc: '',
       description: '',
       image: 'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=800&q=80',
@@ -283,6 +317,8 @@ export const AdminPanelPage: React.FC<AdminPanelPageProps> = ({
       ageRange: prod.ageRange,
       ageFilter: prod.ageFilter,
       price: prod.price,
+      isCustomPrice: Boolean(prod.isCustomPrice),
+      customPriceText: prod.customPriceText || 'برای استعلام قیمت تماس بگیرید',
       shortDesc: prod.shortDesc,
       description: prod.description,
       image: prod.image,
@@ -317,6 +353,8 @@ export const AdminPanelPage: React.FC<AdminPanelPageProps> = ({
         ageRange: productForm.ageRange,
         ageFilter: productForm.ageFilter,
         price: Number(productForm.price),
+        isCustomPrice: productForm.isCustomPrice,
+        customPriceText: productForm.isCustomPrice ? (productForm.customPriceText || 'برای استعلام قیمت تماس بگیرید') : undefined,
         shortDesc: productForm.shortDesc,
         description: productForm.description,
         image: productForm.image,
@@ -335,6 +373,8 @@ export const AdminPanelPage: React.FC<AdminPanelPageProps> = ({
         ageRange: productForm.ageRange,
         ageFilter: productForm.ageFilter,
         price: Number(productForm.price),
+        isCustomPrice: productForm.isCustomPrice,
+        customPriceText: productForm.isCustomPrice ? (productForm.customPriceText || 'برای استعلام قیمت تماس بگیرید') : undefined,
         shortDesc: productForm.shortDesc,
         description: productForm.description,
         image: productForm.image,
@@ -373,6 +413,7 @@ export const AdminPanelPage: React.FC<AdminPanelPageProps> = ({
       coverImage: '',
       audioUrl: '',
       description: '',
+      transcript: '',
       targetAge: '۳ تا ۷ سال'
     });
     setPodcastAudioSourceType('upload');
@@ -397,6 +438,7 @@ export const AdminPanelPage: React.FC<AdminPanelPageProps> = ({
       coverImage: pod.coverImage,
       audioUrl: pod.audioUrl,
       description: pod.description,
+      transcript: pod.transcript || '',
       targetAge: pod.targetAge
     });
     setPodcastAudioSourceType(pod.audioUrl?.startsWith('/uploads') ? 'upload' : 'url');
@@ -552,6 +594,7 @@ export const AdminPanelPage: React.FC<AdminPanelPageProps> = ({
         coverImage: podcastForm.coverImage,
         audioUrl: podcastForm.audioUrl,
         description: podcastForm.description,
+        transcript: podcastForm.transcript || '',
         targetAge: podcastForm.targetAge
       });
     } else {
@@ -568,6 +611,7 @@ export const AdminPanelPage: React.FC<AdminPanelPageProps> = ({
         coverImage: podcastForm.coverImage,
         audioUrl: podcastForm.audioUrl,
         description: podcastForm.description,
+        transcript: podcastForm.transcript || '',
         targetAge: podcastForm.targetAge,
         playsCount: 1,
         likesCount: 0,
@@ -607,89 +651,144 @@ export const AdminPanelPage: React.FC<AdminPanelPageProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onResetSampleData}
-            className="flex items-center gap-2 text-xs font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-3.5 py-2.5 rounded-xl transition-colors cursor-pointer"
-            title="بازنشانی اطلاعات نمونه اولیه"
-          >
-            <RefreshCw className="w-4 h-4 text-amber-400" />
-            <span>بازنشانی داده‌های نمونه</span>
-          </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {currentUser && (
+            <div className="flex items-center gap-2.5 bg-slate-800/80 border border-slate-700/80 px-3 py-1.5 rounded-2xl">
+              <div className="w-7 h-7 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs flex items-center justify-center">
+                {currentUser.fullName.charAt(0)}
+              </div>
+              <div className="text-right">
+                <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <span>{currentUser.fullName}</span>
+                  <span className="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.2 rounded border border-amber-500/20">
+                    {currentUser.roleName || currentUser.role}
+                  </span>
+                </div>
+                <div className="text-[10px] text-slate-400">@{currentUser.username}</div>
+              </div>
+            </div>
+          )}
+
+          {canViewSettings && (
+            <button
+              onClick={onResetSampleData}
+              className="flex items-center gap-2 text-xs font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-3.5 py-2.5 rounded-xl transition-colors cursor-pointer"
+              title="بازنشانی اطلاعات نمونه اولیه"
+            >
+              <RefreshCw className="w-4 h-4 text-amber-400" />
+              <span>بازنشانی نمونه‌ها</span>
+            </button>
+          )}
+
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              className="flex items-center gap-1.5 text-xs font-bold text-rose-300 hover:text-rose-100 bg-rose-950/60 hover:bg-rose-900/80 border border-rose-800/60 px-3.5 py-2.5 rounded-xl transition-colors cursor-pointer"
+              title="خروج از حساب مدیریت"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>خروج</span>
+            </button>
+          )}
         </div>
       </div>
 
       {/* Main Navigation Tabs */}
       <div className="flex flex-wrap border-b border-slate-200 bg-white p-2 rounded-2xl shadow-xs gap-2">
-        <button
-          id="admin-tab-analytics"
-          onClick={() => setActiveTab('analytics')}
-          className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-            activeTab === 'analytics'
-              ? 'bg-amber-500 text-slate-950 shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <BarChart3 className="w-4 h-4" />
-          <span>آمار و میزان استفاده</span>
-        </button>
+        {canViewAnalytics && (
+          <button
+            id="admin-tab-analytics"
+            onClick={() => setActiveTab('analytics')}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              activeTab === 'analytics'
+                ? 'bg-amber-500 text-slate-950 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>آمار و میزان استفاده</span>
+          </button>
+        )}
 
-        <button
-          id="admin-tab-products"
-          onClick={() => setActiveTab('products')}
-          className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-            activeTab === 'products'
-              ? 'bg-amber-500 text-slate-950 shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <Package className="w-4 h-4" />
-          <span>مدیریت محصولات ({toPersianDigits(products.length)})</span>
-        </button>
+        {canManageProducts && (
+          <button
+            id="admin-tab-products"
+            onClick={() => setActiveTab('products')}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              activeTab === 'products'
+                ? 'bg-amber-500 text-slate-950 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Package className="w-4 h-4" />
+            <span>مدیریت محصولات ({toPersianDigits(products.length)})</span>
+          </button>
+        )}
 
-        <button
-          id="admin-tab-podcasts"
-          onClick={() => setActiveTab('podcasts')}
-          className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-            activeTab === 'podcasts'
-              ? 'bg-amber-500 text-slate-950 shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <Headphones className="w-4 h-4" />
-          <span>فایل‌های صوتی و پادکست ({toPersianDigits(podcasts.length)})</span>
-        </button>
+        {canManagePodcasts && (
+          <button
+            id="admin-tab-podcasts"
+            onClick={() => setActiveTab('podcasts')}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              activeTab === 'podcasts'
+                ? 'bg-amber-500 text-slate-950 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Headphones className="w-4 h-4" />
+            <span>فایل‌های صوتی و پادکست ({toPersianDigits(podcasts.length)})</span>
+          </button>
+        )}
 
-        <button
-          id="admin-tab-reviews"
-          onClick={() => setActiveTab('reviews')}
-          className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer relative ${
-            activeTab === 'reviews'
-              ? 'bg-amber-500 text-slate-950 shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <MessageSquare className="w-4 h-4" />
-          <span>نظرات والدین ({toPersianDigits(reviews.length)})</span>
-          {pendingCount > 0 && (
-            <span className="bg-rose-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
-              {toPersianDigits(pendingCount)} در انتظار
-            </span>
-          )}
-        </button>
+        {canManageReviews && (
+          <button
+            id="admin-tab-reviews"
+            onClick={() => setActiveTab('reviews')}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer relative ${
+              activeTab === 'reviews'
+                ? 'bg-amber-500 text-slate-950 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span>نظرات والدین ({toPersianDigits(reviews.length)})</span>
+            {pendingCount > 0 && (
+              <span className="bg-rose-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                {toPersianDigits(pendingCount)} در انتظار
+              </span>
+            )}
+          </button>
+        )}
 
-        <button
-          id="admin-tab-self-host"
-          onClick={() => setActiveTab('self-host')}
-          className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-            activeTab === 'self-host'
-              ? 'bg-amber-500 text-slate-950 shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <Server className="w-4 h-4" />
-          <span>سرور شخصی و دیتابیس اختصاصی</span>
-        </button>
+        {canViewUsers && (
+          <button
+            id="admin-tab-users"
+            onClick={() => setActiveTab('users')}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              activeTab === 'users'
+                ? 'bg-amber-500 text-slate-950 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>مدیریت کاربران و نقش‌ها</span>
+          </button>
+        )}
+
+        {canViewSettings && (
+          <button
+            id="admin-tab-self-host"
+            onClick={() => setActiveTab('self-host')}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              activeTab === 'self-host'
+                ? 'bg-amber-500 text-slate-950 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Server className="w-4 h-4" />
+            <span>سرور شخصی و دیتابیس</span>
+          </button>
+        )}
       </div>
 
       {/* Tab 1: Analytics & Usage Stats */}
@@ -859,7 +958,9 @@ export const AdminPanelPage: React.FC<AdminPanelPageProps> = ({
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-slate-600">{toPersianDigits(p.viewsCount)} بازدید</span>
-                      <span className="font-bold text-orange-600">{formatToman(p.price)}</span>
+                      <span className="font-bold text-orange-600">
+                        {p.isCustomPrice && p.customPriceText ? p.customPriceText : formatToman(p.price)}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -922,7 +1023,16 @@ export const AdminPanelPage: React.FC<AdminPanelPageProps> = ({
                         </span>
                       </td>
                       <td className="p-4 font-medium text-slate-800">{prod.ageRange}</td>
-                      <td className="p-4 font-bold text-slate-900">{formatToman(prod.price)}</td>
+                      <td className="p-4 font-bold text-slate-900">
+                        {prod.isCustomPrice && prod.customPriceText ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 border border-amber-200 text-xs">
+                            <PhoneCall className="w-3 h-3 text-amber-700 shrink-0" />
+                            <span>{prod.customPriceText}</span>
+                          </span>
+                        ) : (
+                          formatToman(prod.price)
+                        )}
+                      </td>
                       <td className="p-4">
                         <button
                           onClick={() => onUpdateProduct({ ...prod, inStock: !prod.inStock })}
@@ -1555,6 +1665,11 @@ pm2 save`, 'pm2-cmd')}
         </div>
       )}
 
+      {/* Tab 6: User Management and Role-Based Access Control (RBAC) */}
+      {activeTab === 'users' && currentUser && (
+        <UserManagementTab currentUser={currentUser} />
+      )}
+
       {/* Product Edit/Add Modal */}
       {isProductModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
@@ -1602,18 +1717,92 @@ pm2 save`, 'pm2-cmd')}
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">قیمت (تومان):</label>
-                  <input
-                    type="number"
-                    required
-                    value={productForm.price}
-                    onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-orange-400 focus:outline-hidden"
-                  />
+              {/* Pricing Section */}
+              <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/80 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <span>نحوه قیمت‌گذاری:</span>
+                  </label>
+                  
+                  {/* Mode Toggle */}
+                  <div className="flex bg-slate-200/80 p-0.5 rounded-xl text-[11px] font-bold self-start sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => setProductForm({ ...productForm, isCustomPrice: false })}
+                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                        !productForm.isCustomPrice 
+                          ? 'bg-white text-orange-600 shadow-xs' 
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      قیمت مشخص (تومان)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setProductForm({ ...productForm, isCustomPrice: true })}
+                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                        productForm.isCustomPrice 
+                          ? 'bg-orange-500 text-white shadow-xs' 
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      متن دلخواه (استعلام قیمت)
+                    </button>
+                  </div>
                 </div>
 
+                {!productForm.isCustomPrice ? (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">قیمت فروش مستقیم (تومان):</label>
+                    <input
+                      type="number"
+                      required={!productForm.isCustomPrice}
+                      value={productForm.price}
+                      onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) })}
+                      placeholder="مثال: ۳۵۰,۰۰۰"
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-orange-400 focus:outline-hidden"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        متن دلخواه به جای قیمت عددی:
+                      </label>
+                      <input
+                        type="text"
+                        required={productForm.isCustomPrice}
+                        value={productForm.customPriceText}
+                        onChange={(e) => setProductForm({ ...productForm, customPriceText: e.target.value })}
+                        placeholder="مثال: برای استعلام قیمت تماس بگیرید"
+                        className="w-full px-3 py-2 bg-white border border-amber-300 rounded-xl text-xs font-bold text-amber-950 focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                      />
+                    </div>
+                    {/* Quick suggestion presets */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      <span className="text-[10px] text-slate-500 font-medium">عبارت‌های پیشنهادی:</span>
+                      {[
+                        'برای استعلام قیمت تماس بگیرید',
+                        'تماس بگیرید',
+                        'استعلام تلفنی یا پیام‌رسان',
+                        'قیمت روز (استعلام کارخانه)',
+                        'به زودی موجود می‌شود'
+                      ].map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setProductForm({ ...productForm, customPriceText: preset })}
+                          className="px-2 py-0.5 rounded-lg text-[10px] bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 transition-colors cursor-pointer"
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">متن رده سنی:</label>
                   <input
@@ -2116,6 +2305,23 @@ pm2 save`, 'pm2-cmd')}
                   onChange={(e) => setPodcastForm({ ...podcastForm, description: e.target.value })}
                   placeholder="داستان درباره همکاری دو خرگوش باهوش است که..."
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-rose-400 focus:outline-hidden"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                    <FileText className="w-4 h-4 text-indigo-500" />
+                    <span>متن کامل قصه یا شعر (اختیاری):</span>
+                  </label>
+                  <span className="text-[10px] text-slate-500">جهت مطالعه کودک یا والدین همزمان با پخش</span>
+                </div>
+                <textarea
+                  rows={4}
+                  value={podcastForm.transcript || ''}
+                  onChange={(e) => setPodcastForm({ ...podcastForm, transcript: e.target.value })}
+                  placeholder="متن کامل یا شعر و ترانه را اینجا وارد کنید..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-rose-400 focus:outline-hidden leading-relaxed"
                 />
               </div>
 

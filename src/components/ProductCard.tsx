@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, CheckCircle, Sparkles, ArrowLeft, Heart } from 'lucide-react';
+import { Star, CheckCircle, Sparkles, ArrowLeft, Heart, PhoneCall } from 'lucide-react';
 import { Product } from '../types';
 import { formatToman, toPersianDigits } from '../utils/formatters';
 
@@ -131,21 +131,30 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelectProdu
         </div>
 
         {/* Pricing & CTA */}
-        <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-          <div>
-            {product.oldPrice && (
-              <span className="block text-[11px] text-slate-600 line-through">
-                {toPersianDigits(product.oldPrice.toLocaleString())}
+        <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            {product.isCustomPrice && product.customPriceText ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-amber-900 bg-amber-500/15 border border-amber-500/30 px-2.5 py-1 rounded-xl max-w-full">
+                <PhoneCall className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                <span className="truncate">{product.customPriceText}</span>
               </span>
+            ) : (
+              <>
+                {product.oldPrice && (
+                  <span className="block text-[11px] text-slate-600 line-through">
+                    {toPersianDigits(product.oldPrice.toLocaleString())}
+                  </span>
+                )}
+                <span className="text-base font-black text-slate-900">
+                  {formatToman(product.price)}
+                </span>
+              </>
             )}
-            <span className="text-base font-black text-slate-900">
-              {formatToman(product.price)}
-            </span>
           </div>
 
           <button 
             type="button"
-            className="w-9 h-9 rounded-xl bg-amber-100 group-hover:bg-orange-500 text-amber-900 group-hover:text-white flex items-center justify-center transition-all shadow-xs group-hover:shadow-md"
+            className="w-9 h-9 rounded-xl bg-amber-100 group-hover:bg-orange-500 text-amber-900 group-hover:text-white flex items-center justify-center transition-all shadow-xs group-hover:shadow-md shrink-0"
             aria-label="مشاهده مشخصات کامل"
           >
             <ArrowLeft className="w-4 h-4 transform group-hover:-translate-x-0.5 transition-transform" />

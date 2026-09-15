@@ -276,7 +276,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({
                               {prod.title}
                             </h4>
                             <span className="text-xs font-black text-orange-600 shrink-0 mr-2">
-                              {formatToman(prod.price)}
+                              {prod.isCustomPrice && prod.customPriceText ? prod.customPriceText : formatToman(prod.price)}
                             </span>
                           </div>
                           <div className="flex items-center gap-2 mt-1">

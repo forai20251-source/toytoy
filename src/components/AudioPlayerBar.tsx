@@ -9,7 +9,13 @@ import {
   X, 
   Sparkles,
   Radio,
-  ExternalLink
+  ExternalLink,
+  BookOpen,
+  FileText,
+  Sun,
+  Moon,
+  Copy,
+  Check
 } from 'lucide-react';
 import { PodcastEpisode } from '../types';
 import { formatTime } from '../utils/formatters';
@@ -37,6 +43,10 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
   const [isMuted, setIsMuted] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [audioError, setAudioError] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(false);
+  const [nightMode, setNightMode] = useState(false);
+  const [fontSize, setFontSize] = useState<'sm' | 'md' | 'lg'>('md');
+  const [copiedTranscript, setCopiedTranscript] = useState(false);
 
   useEffect(() => {
     if (!podcast) return;
@@ -240,6 +250,24 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
               <span>همه قصه‌ها</span>
             </button>
+
+            {/* Read Story Transcript button */}
+            <button
+              id="audio-view-transcript-btn"
+              onClick={() => {
+                setShowTranscript(!showTranscript);
+                setCopiedTranscript(false);
+              }}
+              className={`flex items-center gap-1 text-xs font-bold transition-colors px-2 py-1 rounded-lg cursor-pointer ${
+                showTranscript 
+                  ? 'bg-indigo-600 text-white shadow-xs' 
+                  : 'text-indigo-600 hover:bg-indigo-50 bg-indigo-50/70'
+              }`}
+              title="مشاهده متن قصه و ترانه"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>متن قصه</span>
+            </button>
           </div>
 
           {/* Timeline and Seek Bar */}
@@ -307,6 +335,170 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Transcript Floating Panel / Modal */}
+      {showTranscript && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={() => setShowTranscript(false)}
+        >
+          <div 
+            className={`w-full max-w-2xl rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl transition-colors duration-300 flex flex-col max-h-[85vh] ${
+              nightMode ? 'bg-slate-900 text-slate-100 border border-slate-800' : 'bg-white text-slate-900 border border-slate-100'
+            }`}
+            onClick={(e) => e.stopPropagation()}
+            dir="rtl"
+          >
+            {/* Header */}
+            <div className={`p-4 sm:p-5 flex items-center justify-between border-b ${
+              nightMode ? 'border-slate-800 bg-slate-900/80' : 'border-slate-100 bg-slate-50/80'
+            }`}>
+              <div className="flex items-center gap-3">
+                <img 
+                  src={podcast.coverImage} 
+                  alt={podcast.title} 
+                  className="w-11 h-11 rounded-2xl object-cover shadow-xs"
+                />
+                <div>
+                  <h3 className="text-sm sm:text-base font-black leading-tight">
+                    {podcast.title}
+                  </h3>
+                  <div className="flex items-center gap-2 mt-1 text-xs opacity-75">
+                    <span>گوینده: {podcast.narrator}</span>
+                    <span>•</span>
+                    <span className="text-rose-500 font-bold">{podcast.categoryName}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Night Mode Toggle */}
+                <button
+                  onClick={() => setNightMode(!nightMode)}
+                  className={`p-2 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                    nightMode ? 'bg-amber-400 text-slate-950' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                  }`}
+                  title={nightMode ? 'حالت روز' : 'حالت مطالعه قبل خواب'}
+                >
+                  {nightMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                </button>
+
+                {/* Font Size Toggle */}
+                <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-0.5 text-xs font-bold">
+                  <button
+                    onClick={() => setFontSize('sm')}
+                    className={`px-2 py-1 rounded-lg transition-colors cursor-pointer ${
+                      fontSize === 'sm' 
+                        ? (nightMode ? 'bg-slate-700 text-white' : 'bg-white text-slate-900 shadow-xs') 
+                        : 'opacity-60 hover:opacity-100'
+                    }`}
+                  >
+                    کوچک
+                  </button>
+                  <button
+                    onClick={() => setFontSize('md')}
+                    className={`px-2 py-1 rounded-lg transition-colors cursor-pointer ${
+                      fontSize === 'md' 
+                        ? (nightMode ? 'bg-slate-700 text-white' : 'bg-white text-slate-900 shadow-xs') 
+                        : 'opacity-60 hover:opacity-100'
+                    }`}
+                  >
+                    متوسط
+                  </button>
+                  <button
+                    onClick={() => setFontSize('lg')}
+                    className={`px-2 py-1 rounded-lg transition-colors cursor-pointer ${
+                      fontSize === 'lg' 
+                        ? (nightMode ? 'bg-slate-700 text-white' : 'bg-white text-slate-900 shadow-xs') 
+                        : 'opacity-60 hover:opacity-100'
+                    }`}
+                  >
+                    بزرگ
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => setShowTranscript(false)}
+                  className={`p-2 rounded-xl transition-colors cursor-pointer ${
+                    nightMode ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-500'
+                  }`}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 sm:p-8 overflow-y-auto space-y-4 flex-1">
+              {podcast.transcript ? (
+                <div className={`leading-relaxed whitespace-pre-line font-medium ${
+                  fontSize === 'sm' 
+                    ? 'text-sm sm:text-base leading-7 sm:leading-8' 
+                    : fontSize === 'lg' 
+                    ? 'text-lg sm:text-2xl leading-9 sm:leading-10 font-normal' 
+                    : 'text-base sm:text-lg leading-8 sm:leading-9'
+                } ${nightMode ? 'text-amber-100/90' : 'text-slate-800'}`}>
+                  {podcast.transcript}
+                </div>
+              ) : (
+                <div className="text-center py-10 space-y-3">
+                  <BookOpen className="w-12 h-12 mx-auto text-amber-500 opacity-60" />
+                  <h4 className="text-base font-bold">متن اختصاصی برای این قصه هنوز ثبت نشده است</h4>
+                  <p className="text-xs opacity-75 max-w-md mx-auto leading-relaxed">
+                    {podcast.description || podcast.subtitle}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className={`p-4 border-t flex items-center justify-between gap-2 ${
+              nightMode ? 'border-slate-800 bg-slate-900/90' : 'border-slate-100 bg-slate-50'
+            }`}>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={onTogglePlay}
+                  className="px-3.5 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-black text-xs shadow-sm flex items-center gap-1.5 cursor-pointer"
+                >
+                  {isPlaying ? (
+                    <>
+                      <Pause className="w-3.5 h-3.5 fill-current" />
+                      <span>توقف صوت</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      <span>پخش صوت</span>
+                    </>
+                  )}
+                </button>
+
+                {podcast.transcript && (
+                  <button
+                    onClick={() => {
+                      if (podcast.transcript) {
+                        navigator.clipboard.writeText(podcast.transcript);
+                        setCopiedTranscript(true);
+                        setTimeout(() => setCopiedTranscript(false), 2000);
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                      nightMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                    }`}
+                  >
+                    {copiedTranscript ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedTranscript ? 'کپی شد' : 'کپی متن'}</span>
+                  </button>
+                )}
+              </div>
+
+              <span className="text-[11px] opacity-60">
+                هم‌خوانی و قصه خوانی کودک و والدین
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   );
 };

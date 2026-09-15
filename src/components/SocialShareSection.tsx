@@ -29,11 +29,12 @@ export const SocialShareSection: React.FC<SocialShareSectionProps> = ({
   // Generate share URL and caption text
   const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
   const shareTitle = `اسباب‌بازی ${product.title} - توی‌لند`;
+  const priceDisplay = product.isCustomPrice && product.customPriceText ? product.customPriceText : formatToman(product.price);
   const shareCaption = `🧸 اسباب‌بازی: ${product.title}
 ✨ رده سنی: ${product.ageRange}
 🌿 جنس: ${product.materials}
 🎯 مهارت‌ها: ${product.skillsDeveloped.join('، ')}
-💰 قیمت کارخانه: ${formatToman(product.price)}
+💰 وضعیت قیمت: ${priceDisplay}
 
 خرید مستقیم از کارخانه اسباب‌بازی‌های توی‌لند:
 ${shareUrl}`;
@@ -73,13 +74,13 @@ ${shareUrl}`;
 
   const handleShareTelegram = () => {
     const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(
-      `🧸 ${product.title}\n${product.shortDesc}\nقیمت: ${formatToman(product.price)}\n`
+      `🧸 ${product.title}\n${product.shortDesc}\nقیمت: ${priceDisplay}\n`
     )}`;
     window.open(telegramUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handleShareWhatsApp = () => {
-    const text = `${shareTitle}\n${product.shortDesc}\nقیمت: ${formatToman(product.price)}\nمشاهده و سفارش:\n${shareUrl}`;
+    const text = `${shareTitle}\n${product.shortDesc}\nقیمت: ${priceDisplay}\nمشاهده و سفارش:\n${shareUrl}`;
     const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
     window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
   };

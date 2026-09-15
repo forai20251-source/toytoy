@@ -20,6 +20,8 @@ export interface Product {
   ageFilter: '0-2' | '3-5' | '6-8' | '9+';
   price: number; // in Tomans
   oldPrice?: number;
+  isCustomPrice?: boolean; // آیا به جای قیمت عددی، متن دلخواه نمایش داده شود؟
+  customPriceText?: string; // متن دلخواه جایگزین قیمت (مثلاً: "برای استعلام قیمت تماس بگیرید")
   rating: number;
   reviewsCount: number;
   isPopular?: boolean;
@@ -88,3 +90,28 @@ export interface ContactMessage {
   message: string;
   date: string;
 }
+
+export type UserRole = 'super_admin' | 'store_manager' | 'content_editor' | 'support_agent' | 'viewer';
+
+export type AdminPermission = 
+  | 'view_analytics'
+  | 'manage_products'
+  | 'manage_podcasts'
+  | 'moderate_reviews'
+  | 'manage_users'
+  | 'manage_system';
+
+export interface AdminUser {
+  id: string;
+  username: string;
+  fullName: string;
+  email: string;
+  role: UserRole;
+  roleName: string;
+  permissions: AdminPermission[];
+  isActive: boolean;
+  lastLogin?: string;
+  createdAt: string;
+  password?: string; // used internally on server / creation
+}
+

@@ -172,6 +172,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     ageFilter: '3-5',
     price: 890000,
     oldPrice: 1100000,
+    isCustomPrice: true,
+    customPriceText: 'برای استعلام قیمت تماس بگیرید',
     rating: 4.9,
     reviewsCount: 64,
     isPopular: true,

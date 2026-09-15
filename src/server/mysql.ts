@@ -1,6 +1,7 @@
 import mysql, { Pool, PoolOptions } from 'mysql2/promise';
-import { Product, PodcastEpisode, ParentReview, UsageAnalytics, ContactMessage } from '../types';
+import { Product, PodcastEpisode, ParentReview, UsageAnalytics, ContactMessage, AdminUser } from '../types';
 import { INITIAL_PRODUCTS, INITIAL_PODCASTS, INITIAL_REVIEWS, INITIAL_ANALYTICS } from '../data/initialData';
+import { INITIAL_ADMIN_USERS } from '../data/authData';
 
 let pool: Pool | null = null;
 let isConnected = false;
@@ -93,6 +94,8 @@ async function ensureTables(): Promise<void> {
       \`ageFilter\` VARCHAR(20) NOT NULL DEFAULT '3-5',
       \`price\` INT NOT NULL DEFAULT 0,
       \`oldPrice\` INT DEFAULT NULL,
+      \`isCustomPrice\` BOOLEAN DEFAULT FALSE,
+      \`customPriceText\` VARCHAR(255) DEFAULT '',
       \`rating\` DECIMAL(3, 1) NOT NULL DEFAULT 5.0,
       \`reviewsCount\` INT NOT NULL DEFAULT 0,
       \`isPopular\` BOOLEAN DEFAULT FALSE,
@@ -183,6 +186,33 @@ async function ensureTables(): Promise<void> {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `);
 
+  // 6. Admin Users table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS \`admin_users\` (
+      \`id\` VARCHAR(128) NOT NULL PRIMARY KEY,
+      \`username\` VARCHAR(100) NOT NULL UNIQUE,
+      \`password\` VARCHAR(255) NOT NULL DEFAULT '123',
+      \`fullName\` VARCHAR(255) NOT NULL,
+      \`email\` VARCHAR(255) NOT NULL DEFAULT '',
+      \`role\` VARCHAR(50) NOT NULL DEFAULT 'viewer',
+      \`roleName\` VARCHAR(100) NOT NULL DEFAULT '',
+      \`permissions\` JSON,
+      \`isActive\` BOOLEAN DEFAULT TRUE,
+      \`lastLogin\` VARCHAR(100) DEFAULT '',
+      \`createdAt\` VARCHAR(50) DEFAULT '',
+      \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `);
+
+  // Seed initial admin users if empty
+  const [userRows]: any = await pool.query('SELECT COUNT(*) as count FROM admin_users');
+  if (userRows[0].count === 0) {
+    console.log('[MySQL] Seeding initial admin users...');
+    for (const u of INITIAL_ADMIN_USERS) {
+      await mysqlSaveAdminUser(u);
+    }
+  }
+
   // Seed initial products if empty
   const [prodRows]: any = await pool.query('SELECT COUNT(*) as count FROM products');
   if (prodRows[0].count === 0) {
@@ -224,6 +254,16 @@ async function ensureTables(): Promise<void> {
   } catch (err: any) {
     // Column already exists, safe to continue
   }
+
+  // Safe migration: Ensure isCustomPrice and customPriceText exist on products table
+  try {
+    await pool.query('ALTER TABLE `products` ADD COLUMN `isCustomPrice` BOOLEAN DEFAULT FALSE');
+    console.log('[MySQL] Successfully ensured isCustomPrice column exists in products table.');
+  } catch (err: any) {}
+  try {
+    await pool.query('ALTER TABLE `products` ADD COLUMN `customPriceText` VARCHAR(255) DEFAULT ""');
+    console.log('[MySQL] Successfully ensured customPriceText column exists in products table.');
+  } catch (err: any) {}
 }
 
 // ==========================================
@@ -242,6 +282,8 @@ export async function mysqlGetAllProducts(): Promise<Product[]> {
     ageFilter: r.ageFilter || '3-5',
     price: Number(r.price || 0),
     oldPrice: r.oldPrice ? Number(r.oldPrice) : undefined,
+    isCustomPrice: Boolean(r.isCustomPrice),
+    customPriceText: r.customPriceText || undefined,
     rating: Number(r.rating || 5),
     reviewsCount: Number(r.reviewsCount || 0),
     isPopular: Boolean(r.isPopular),
@@ -264,11 +306,11 @@ export async function mysqlSaveProduct(p: Product): Promise<void> {
   if (!pool || !isConnected) return;
   const sql = `
     INSERT INTO products (
-      id, title, category, categoryName, ageRange, ageFilter, price, oldPrice, rating, reviewsCount,
+      id, title, category, categoryName, ageRange, ageFilter, price, oldPrice, isCustomPrice, customPriceText, rating, reviewsCount,
       isPopular, isNew, inStock, image, gallery, description, shortDesc, features, skillsDeveloped,
       materials, dimensions, safetyCertificate, viewsCount
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       title = VALUES(title),
       category = VALUES(category),
@@ -277,6 +319,8 @@ export async function mysqlSaveProduct(p: Product): Promise<void> {
       ageFilter = VALUES(ageFilter),
       price = VALUES(price),
       oldPrice = VALUES(oldPrice),
+      isCustomPrice = VALUES(isCustomPrice),
+      customPriceText = VALUES(customPriceText),
       rating = VALUES(rating),
       reviewsCount = VALUES(reviewsCount),
       isPopular = VALUES(isPopular),
@@ -302,6 +346,8 @@ export async function mysqlSaveProduct(p: Product): Promise<void> {
     p.ageFilter || '3-5',
     p.price || 0,
     p.oldPrice !== undefined ? p.oldPrice : null,
+    p.isCustomPrice ? 1 : 0,
+    p.customPriceText || '',
     p.rating || 5,
     p.reviewsCount || 0,
     p.isPopular ? 1 : 0,
@@ -514,6 +560,60 @@ export async function mysqlGetAllMessages(): Promise<ContactMessage[]> {
   if (!pool || !isConnected) return [];
   const [rows]: any = await pool.query('SELECT * FROM messages ORDER BY created_at DESC');
   return rows;
+}
+
+export async function mysqlGetAllAdminUsers(): Promise<AdminUser[]> {
+  if (!pool || !isConnected) return [];
+  const [rows]: any = await pool.query('SELECT * FROM admin_users ORDER BY created_at ASC');
+  return rows.map((r: any) => ({
+    id: r.id,
+    username: r.username,
+    password: r.password,
+    fullName: r.fullName,
+    email: r.email,
+    role: r.role,
+    roleName: r.roleName,
+    permissions: typeof r.permissions === 'string' ? JSON.parse(r.permissions || '[]') : (r.permissions || []),
+    isActive: Boolean(r.isActive),
+    lastLogin: r.lastLogin || '',
+    createdAt: r.createdAt || ''
+  }));
+}
+
+export async function mysqlSaveAdminUser(user: AdminUser): Promise<void> {
+  if (!pool || !isConnected) return;
+  const sql = `
+    INSERT INTO \`admin_users\` 
+      (\`id\`, \`username\`, \`password\`, \`fullName\`, \`email\`, \`role\`, \`roleName\`, \`permissions\`, \`isActive\`, \`lastLogin\`, \`createdAt\`)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE
+      \`password\` = VALUES(\`password\`),
+      \`fullName\` = VALUES(\`fullName\`),
+      \`email\` = VALUES(\`email\`),
+      \`role\` = VALUES(\`role\`),
+      \`roleName\` = VALUES(\`roleName\`),
+      \`permissions\` = VALUES(\`permissions\`),
+      \`isActive\` = VALUES(\`isActive\`),
+      \`lastLogin\` = VALUES(\`lastLogin\`)
+  `;
+  await pool.execute(sql, [
+    user.id,
+    user.username,
+    user.password || '123',
+    user.fullName,
+    user.email,
+    user.role,
+    user.roleName,
+    JSON.stringify(user.permissions || []),
+    user.isActive ? 1 : 0,
+    user.lastLogin || '',
+    user.createdAt || ''
+  ]);
+}
+
+export async function mysqlDeleteAdminUser(id: string): Promise<void> {
+  if (!pool || !isConnected) return;
+  await pool.execute('DELETE FROM `admin_users` WHERE `id` = ?', [id]);
 }
 
 /**

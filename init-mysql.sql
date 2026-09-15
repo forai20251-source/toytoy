@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS `products` (
   `ageFilter` VARCHAR(20) NOT NULL DEFAULT '3-5',
   `price` INT NOT NULL DEFAULT 0,
   `oldPrice` INT DEFAULT NULL,
+  `isCustomPrice` BOOLEAN DEFAULT FALSE,
+  `customPriceText` VARCHAR(255) DEFAULT '',
   `rating` DECIMAL(3, 1) NOT NULL DEFAULT 5.0,
   `reviewsCount` INT NOT NULL DEFAULT 0,
   `isPopular` BOOLEAN DEFAULT FALSE,

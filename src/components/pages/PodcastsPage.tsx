@@ -13,7 +13,13 @@ import {
   Moon, 
   BookOpen, 
   Users,
-  Compass
+  Compass,
+  FileText,
+  X,
+  Copy,
+  Check,
+  Sun,
+  Type
 } from 'lucide-react';
 import { PodcastEpisode } from '../../types';
 import { toPersianDigits } from '../../utils/formatters';
@@ -35,6 +41,10 @@ export const PodcastsPage: React.FC<PodcastsPageProps> = ({
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [readingPodcast, setReadingPodcast] = useState<PodcastEpisode | null>(null);
+  const [readingFontSize, setReadingFontSize] = useState<'sm' | 'md' | 'lg'>('md');
+  const [nightMode, setNightMode] = useState(false);
+  const [copiedTranscript, setCopiedTranscript] = useState(false);
 
   const categories = [
     { key: 'all', label: 'همه قسمت‌ها', icon: Sparkles },
@@ -251,7 +261,20 @@ export const PodcastsPage: React.FC<PodcastsPageProps> = ({
                   </p>
 
                   <div className="pt-2 flex items-center justify-between text-xs text-slate-700">
-                    <span>گوینده: {podcast.narrator}</span>
+                    <div className="flex items-center gap-2">
+                      <span>گوینده: {podcast.narrator}</span>
+                      <button
+                        onClick={() => {
+                          setReadingPodcast(podcast);
+                          setCopiedTranscript(false);
+                        }}
+                        className="flex items-center gap-1 text-[11px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded-lg transition-colors cursor-pointer"
+                        title="مشاهده متن کامل قصه و ترانه"
+                      >
+                        <BookOpen className="w-3 h-3" />
+                        <span>متن قصه</span>
+                      </button>
+                    </div>
                     <div className="flex items-center gap-3">
                       <span className="flex items-center gap-1 text-[11px]">
                         <Clock className="w-3 h-3 text-amber-500" />
@@ -272,6 +295,174 @@ export const PodcastsPage: React.FC<PodcastsPageProps> = ({
           })}
         </div>
       </div>
+
+      {/* Story / Transcript Reading Modal */}
+      {readingPodcast && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+          onClick={() => setReadingPodcast(null)}
+        >
+          <div 
+            className={`w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl transition-colors duration-300 flex flex-col max-h-[90vh] ${
+              nightMode ? 'bg-slate-900 text-slate-100 border border-slate-800' : 'bg-white text-slate-900 border border-slate-100'
+            }`}
+            onClick={(e) => e.stopPropagation()}
+            dir="rtl"
+          >
+            {/* Modal Header */}
+            <div className={`p-4 sm:p-6 flex items-center justify-between border-b ${
+              nightMode ? 'border-slate-800 bg-slate-900/80' : 'border-slate-100 bg-slate-50/70'
+            }`}>
+              <div className="flex items-center gap-3">
+                <img 
+                  src={readingPodcast.coverImage} 
+                  alt={readingPodcast.title} 
+                  className="w-12 h-12 rounded-2xl object-cover shadow-xs"
+                />
+                <div>
+                  <h3 className="text-base font-black leading-snug">
+                    {readingPodcast.title}
+                  </h3>
+                  <div className="flex items-center gap-2 mt-1 text-xs opacity-75">
+                    <span>گوینده: {readingPodcast.narrator}</span>
+                    <span>•</span>
+                    <span className="text-rose-500 font-bold">{readingPodcast.categoryName}</span>
+                    <span>•</span>
+                    <span>رده سنی: {readingPodcast.targetAge}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1 sm:gap-2">
+                {/* Night Mode Toggle */}
+                <button
+                  onClick={() => setNightMode(!nightMode)}
+                  className={`p-2 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                    nightMode ? 'bg-amber-400 text-slate-950' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                  }`}
+                  title={nightMode ? 'حالت روز' : 'حالت مطالعه قبل خواب'}
+                >
+                  {nightMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                </button>
+
+                {/* Font Size Toggle */}
+                <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-0.5 text-xs font-bold">
+                  <button
+                    onClick={() => setReadingFontSize('sm')}
+                    className={`px-2 py-1 rounded-lg transition-colors cursor-pointer ${
+                      readingFontSize === 'sm' 
+                        ? (nightMode ? 'bg-slate-700 text-white' : 'bg-white text-slate-900 shadow-xs') 
+                        : 'opacity-60 hover:opacity-100'
+                    }`}
+                  >
+                    کوچک
+                  </button>
+                  <button
+                    onClick={() => setReadingFontSize('md')}
+                    className={`px-2 py-1 rounded-lg transition-colors cursor-pointer ${
+                      readingFontSize === 'md' 
+                        ? (nightMode ? 'bg-slate-700 text-white' : 'bg-white text-slate-900 shadow-xs') 
+                        : 'opacity-60 hover:opacity-100'
+                    }`}
+                  >
+                    متوسط
+                  </button>
+                  <button
+                    onClick={() => setReadingFontSize('lg')}
+                    className={`px-2 py-1 rounded-lg transition-colors cursor-pointer ${
+                      readingFontSize === 'lg' 
+                        ? (nightMode ? 'bg-slate-700 text-white' : 'bg-white text-slate-900 shadow-xs') 
+                        : 'opacity-60 hover:opacity-100'
+                    }`}
+                  >
+                    بزرگ
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => setReadingPodcast(null)}
+                  className={`p-2 rounded-xl transition-colors cursor-pointer ${
+                    nightMode ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-500'
+                  }`}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body: Story Text */}
+            <div className="p-6 sm:p-8 overflow-y-auto space-y-4 flex-1">
+              {readingPodcast.transcript ? (
+                <div className={`leading-relaxed whitespace-pre-line font-medium ${
+                  readingFontSize === 'sm' 
+                    ? 'text-sm sm:text-base leading-7 sm:leading-8' 
+                    : readingFontSize === 'lg' 
+                    ? 'text-lg sm:text-2xl leading-9 sm:leading-10 font-normal' 
+                    : 'text-base sm:text-lg leading-8 sm:leading-9'
+                } ${nightMode ? 'text-amber-100/90' : 'text-slate-800'}`}>
+                  {readingPodcast.transcript}
+                </div>
+              ) : (
+                <div className="text-center py-10 space-y-3">
+                  <BookOpen className="w-12 h-12 mx-auto text-amber-500 opacity-60" />
+                  <h4 className="text-base font-bold">متن اختصاصی برای این قصه هنوز ثبت نشده است</h4>
+                  <p className="text-xs opacity-75 max-w-md mx-auto leading-relaxed">
+                    {readingPodcast.description || readingPodcast.subtitle}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer: Quick Actions */}
+            <div className={`p-4 sm:p-5 border-t flex items-center justify-between gap-3 ${
+              nightMode ? 'border-slate-800 bg-slate-900/90' : 'border-slate-100 bg-slate-50'
+            }`}>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    onPlayPodcast(readingPodcast);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-black text-xs shadow-sm flex items-center gap-2 transition-all cursor-pointer"
+                >
+                  {activePodcastId === readingPodcast.id && isPlaying ? (
+                    <>
+                      <Pause className="w-4 h-4 fill-current" />
+                      <span>توقف صوت</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 fill-current" />
+                      <span>پخش همزمان صوت</span>
+                    </>
+                  )}
+                </button>
+
+                {readingPodcast.transcript && (
+                  <button
+                    onClick={() => {
+                      if (readingPodcast.transcript) {
+                        navigator.clipboard.writeText(readingPodcast.transcript);
+                        setCopiedTranscript(true);
+                        setTimeout(() => setCopiedTranscript(false), 2000);
+                      }
+                    }}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                      nightMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                    }`}
+                  >
+                    {copiedTranscript ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedTranscript ? 'کپی شد' : 'کپی متن'}</span>
+                  </button>
+                )}
+              </div>
+
+              <span className="text-[11px] opacity-60">
+                مناسب برای خواندن قصه توسط والدین هنگام خواب کودک
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

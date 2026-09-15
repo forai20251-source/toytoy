@@ -12,7 +12,7 @@ import {
   Music2,
   Volume2
 } from 'lucide-react';
-import { Page, PodcastEpisode } from '../types';
+import { Page, PodcastEpisode, AdminUser } from '../types';
 import { DarkModeToggle } from './DarkModeToggle';
 
 interface NavbarProps {
@@ -24,6 +24,8 @@ interface NavbarProps {
   pendingReviewsCount: number;
   isDarkMode: boolean;
   onToggleDarkMode: () => void;
+  currentUser?: AdminUser | null;
+  onLogout?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -34,7 +36,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onTogglePodcastPlay,
   pendingReviewsCount,
   isDarkMode,
-  onToggleDarkMode
+  onToggleDarkMode,
+  currentUser,
+  onLogout
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -132,14 +136,16 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="admin-panel-btn"
               onClick={() => onNavigate('admin')}
-              className={`relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+              className={`relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                 currentPage === 'admin'
-                  ? 'bg-slate-900 text-white shadow-md'
+                  ? 'bg-slate-900 text-white shadow-md ring-2 ring-amber-400/40'
+                  : currentUser
+                  ? 'bg-amber-500/10 text-amber-900 border border-amber-500/30 hover:bg-amber-500/20'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
-              <ShieldCheck className="w-4 h-4 text-amber-500" />
-              <span>پنل مدیریت</span>
+              <ShieldCheck className={`w-4 h-4 ${currentUser ? 'text-amber-600' : 'text-slate-600'}`} />
+              <span>{currentUser ? currentUser.fullName : 'ورود مدیران'}</span>
               {pendingReviewsCount > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold shadow-xs">
                   {pendingReviewsCount}

@@ -3,7 +3,8 @@ import path from 'path';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import { INITIAL_PRODUCTS, INITIAL_PODCASTS, INITIAL_REVIEWS, INITIAL_ANALYTICS } from './src/data/initialData';
-import { Product, PodcastEpisode, ParentReview, UsageAnalytics, ContactMessage } from './src/types';
+import { Product, PodcastEpisode, ParentReview, UsageAnalytics, ContactMessage, AdminUser } from './src/types';
+import { INITIAL_ADMIN_USERS } from './src/data/authData';
 import {
   initMysql,
   isMysqlActive,
@@ -21,6 +22,9 @@ import {
   mysqlSaveAnalytics,
   mysqlSaveMessage,
   mysqlGetAllMessages,
+  mysqlGetAllAdminUsers,
+  mysqlSaveAdminUser,
+  mysqlDeleteAdminUser,
   generateSqlDump
 } from './src/server/mysql';
 
@@ -43,6 +47,7 @@ interface LocalDatabase {
   reviews: ParentReview[];
   analytics: UsageAnalytics;
   messages: ContactMessage[];
+  adminUsers: AdminUser[];
   updatedAt: string;
 }
 
@@ -52,6 +57,7 @@ let localDb: LocalDatabase = {
   reviews: INITIAL_REVIEWS,
   analytics: INITIAL_ANALYTICS,
   messages: [],
+  adminUsers: INITIAL_ADMIN_USERS,
   updatedAt: new Date().toISOString()
 };
 
@@ -77,9 +83,10 @@ function loadDbFromFile(): void {
         reviews: Array.isArray(parsed.reviews) ? parsed.reviews : INITIAL_REVIEWS,
         analytics: parsed.analytics || INITIAL_ANALYTICS,
         messages: Array.isArray(parsed.messages) ? parsed.messages : [],
+        adminUsers: Array.isArray(parsed.adminUsers) && parsed.adminUsers.length > 0 ? parsed.adminUsers : INITIAL_ADMIN_USERS,
         updatedAt: parsed.updatedAt || new Date().toISOString()
       };
-      console.log(`[Self-Hosted DB] Loaded ${localDb.products.length} products, ${localDb.podcasts.length} podcasts from ${DB_FILE}`);
+      console.log(`[Self-Hosted DB] Loaded ${localDb.products.length} products, ${localDb.podcasts.length} podcasts, ${localDb.adminUsers.length} users from ${DB_FILE}`);
     } else {
       console.log(`[Self-Hosted DB] No existing database found at ${DB_FILE}. Initializing with factory data...`);
       saveDbToFile();
@@ -415,7 +422,157 @@ async function startServer() {
     res.json(localDb.messages);
   });
 
-  // 8. MySQL Specific Endpoints (Status, Test Connection, Sync, SQL Dump)
+  // 8. Admin Users & Authentication Endpoints
+  app.post('/api/auth/login', async (req: Request, res: Response) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: 'نام کاربری و کلمه عبور الزامی است' });
+    }
+
+    let users = localDb.adminUsers;
+    if (isMysqlActive()) {
+      try {
+        const mysqlUsers = await mysqlGetAllAdminUsers();
+        if (mysqlUsers.length > 0) users = mysqlUsers;
+      } catch (err) {
+        console.error('[MySQL Get Users for Login]:', err);
+      }
+    }
+
+    const user = users.find(u => u.username.toLowerCase() === String(username).toLowerCase().trim());
+    if (!user) {
+      return res.status(401).json({ error: 'کاربری با این نام کاربری یافت نشد' });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({ error: 'حساب کاربری شما غیرفعال شده است. لطفاً با مدیر کل تماس بگیرید.' });
+    }
+
+    // Check password (supports default admin/admin or user defined password)
+    const expectedPassword = user.password || (user.username === 'admin' ? 'admin' : '123');
+    if (password !== expectedPassword) {
+      return res.status(401).json({ error: 'رمز عبور وارد شده نادرست است' });
+    }
+
+    // Update lastLogin timestamp
+    user.lastLogin = new Date().toLocaleDateString('fa-IR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    saveDbToFile();
+    if (isMysqlActive()) {
+      try { await mysqlSaveAdminUser(user); } catch (e) { console.error('[MySQL Save User Login]:', e); }
+    }
+
+    // Exclude password in response
+    const { password: _, ...userSafe } = user;
+    res.json({
+      success: true,
+      message: 'ورود موفقیت‌آمیز بود',
+      user: userSafe
+    });
+  });
+
+  app.get('/api/users', async (req: Request, res: Response) => {
+    if (isMysqlActive()) {
+      try {
+        const mysqlUsers = await mysqlGetAllAdminUsers();
+        if (mysqlUsers.length > 0) {
+          localDb.adminUsers = mysqlUsers;
+        }
+      } catch (err) {
+        console.error('[MySQL Get Users]:', err);
+      }
+    }
+    // Return users without plaintext passwords
+    const safeUsers = localDb.adminUsers.map(({ password, ...rest }) => rest);
+    res.json(safeUsers);
+  });
+
+  app.post('/api/users', async (req: Request, res: Response) => {
+    const newUser: AdminUser = req.body;
+    if (!newUser || !newUser.username || !newUser.fullName || !newUser.role) {
+      return res.status(400).json({ error: 'اطلاعات کاربر (نام کاربری، نام کامل و نقش) الزامی است' });
+    }
+
+    // Check duplicate username
+    if (localDb.adminUsers.some(u => u.username.toLowerCase() === newUser.username.toLowerCase())) {
+      return res.status(409).json({ error: 'این نام کاربری قبلاً در سامانه ثبت شده است' });
+    }
+
+    const createdUser: AdminUser = {
+      id: newUser.id || `user-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      username: newUser.username.trim(),
+      fullName: newUser.fullName.trim(),
+      email: newUser.email || '',
+      role: newUser.role,
+      roleName: newUser.roleName || 'کاربر سیستم',
+      permissions: Array.isArray(newUser.permissions) ? newUser.permissions : [],
+      isActive: newUser.isActive !== false,
+      lastLogin: 'تاکنون وارد نشده',
+      createdAt: new Date().toLocaleDateString('fa-IR'),
+      password: newUser.password || '123'
+    };
+
+    localDb.adminUsers.push(createdUser);
+    saveDbToFile();
+    if (isMysqlActive()) {
+      try { await mysqlSaveAdminUser(createdUser); } catch (e) { console.error('[MySQL Save User]:', e); }
+    }
+
+    const { password, ...safeUser } = createdUser;
+    res.status(201).json({ success: true, user: safeUser });
+  });
+
+  app.put('/api/users/:id', async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const updates = req.body;
+    const index = localDb.adminUsers.findIndex(u => u.id === id);
+    if (index === -1) {
+      return res.status(404).json({ error: 'کاربر مورد نظر یافت نشد' });
+    }
+
+    // Prevent changing admin username of default super_admin to empty
+    const existing = localDb.adminUsers[index];
+    const updated: AdminUser = {
+      ...existing,
+      ...updates,
+      id: existing.id,
+      password: updates.password ? updates.password : existing.password
+    };
+
+    localDb.adminUsers[index] = updated;
+    saveDbToFile();
+    if (isMysqlActive()) {
+      try { await mysqlSaveAdminUser(updated); } catch (e) { console.error('[MySQL Update User]:', e); }
+    }
+
+    const { password, ...safeUser } = updated;
+    res.json({ success: true, user: safeUser });
+  });
+
+  app.delete('/api/users/:id', async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const user = localDb.adminUsers.find(u => u.id === id);
+    if (!user) {
+      return res.status(404).json({ error: 'کاربر مورد نظر یافت نشد' });
+    }
+
+    // Protect master super_admin from deletion
+    if (user.username === 'admin') {
+      return res.status(403).json({ error: 'امکان حذف مدیر ارشد سیستم وجود ندارد' });
+    }
+
+    localDb.adminUsers = localDb.adminUsers.filter(u => u.id !== id);
+    saveDbToFile();
+    if (isMysqlActive()) {
+      try { await mysqlDeleteAdminUser(id); } catch (e) { console.error('[MySQL Delete User]:', e); }
+    }
+
+    res.json({ success: true, message: 'کاربر با موفقیت حذف شد' });
+  });
+
+  // 9. MySQL Specific Endpoints (Status, Test Connection, Sync, SQL Dump)
   app.get('/api/mysql/status', (req: Request, res: Response) => {
     res.json(getMysqlStatus());
   });
@@ -483,6 +640,7 @@ async function startServer() {
         reviews: Array.isArray(data.reviews) ? data.reviews : INITIAL_REVIEWS,
         analytics: data.analytics || INITIAL_ANALYTICS,
         messages: Array.isArray(data.messages) ? data.messages : [],
+        adminUsers: Array.isArray(data.adminUsers) && data.adminUsers.length > 0 ? data.adminUsers : localDb.adminUsers,
         updatedAt: new Date().toISOString()
       };
       saveDbToFile();
@@ -499,6 +657,7 @@ async function startServer() {
       reviews: [...INITIAL_REVIEWS],
       analytics: { ...INITIAL_ANALYTICS },
       messages: [],
+      adminUsers: [...INITIAL_ADMIN_USERS],
       updatedAt: new Date().toISOString()
     };
     saveDbToFile();
